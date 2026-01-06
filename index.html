@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高雅人生重开模拟器 v3.0 🐧</title>
+    <style>
+        :root {
+            /* 默认高雅配色 */
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary: #2c3e50;
+            --text-main: #333;
+            --accent: #d35400;
+            --highlight-bg: rgba(231, 76, 60, 0.08);
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-main);
+            transition: background-color 1s ease, color 1s ease;
+            background-image: radial-gradient(#dce4ec 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* --- 世界线变动特效 CSS --- */
+        body.mode-xiuxian { --bg-color: #e0f7fa; --primary: #006064; --card-bg: #e0f2f1; background-image: none; }
+        body.mode-2d { --bg-color: #fce4ec; --primary: #880e4f; --card-bg: #fff0f5; background-image: none; }
+        body.mode-horror { --bg-color: #212121; --primary: #000; --card-bg: #303030; --text-main: #cfd8dc; background-image: none; --highlight-bg: rgba(255, 0, 0, 0.2); }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            position: relative;
+            transition: background 1s ease, color 1s ease, box-shadow 1s ease;
+        }
+
+        /* 头部高雅栏 */
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: background 1s ease;
+            z-index: 10;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .penguin-icon { font-size: 1.5rem; animation: waddle 1s infinite alternate; }
+        @keyframes waddle { from { transform: rotate(-10deg); } to { transform: rotate(10deg); } }
+
+        /* 屏幕通用 */
+        .screen { padding: 25px; flex: 1; display: none; flex-direction: column; overflow-y: auto; }
+        .screen.active { display: flex; }
+
+        /* 首页 Start Screen */
+        .start-screen { text-align: center; justify-content: center; }
+        .meme-banner { font-size: 70px; margin: 20px 0; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
+        .subtitle { font-size: 0.9rem; color: #666; margin-top: 10px; font-style: italic; }
+        .version-info { margin-top: 30px; font-size: 0.8rem; color: #999; text-align: left; background: #f8f9fa; padding: 15px; border-radius: 10px; }
+        .special-hint { color: var(--accent); font-weight: bold; }
+
+        /* 按钮 */
+        .btn {
+            background: var(--primary); color: white; border: none; padding: 16px 32px; font-size: 1.05rem;
+            border-radius: 50px; cursor: pointer; margin-top: 25px; box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            transition: all 0.2s; font-weight: bold; letter-spacing: 1px;
+        }
+        .btn:active { transform: scale(0.98); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #restart-btn { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: none; z-index: 100; width: 85%; }
+
+        /* 设置界面 Setup Screen */
+        .setup-screen h2 { text-align: center; margin-bottom: 25px; color: var(--primary); }
+        .gender-select { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; }
+        .gender-btn { padding: 10px 20px; border: 2px solid #ddd; background: transparent; border-radius: 12px; cursor: pointer; color: var(--text-main); font-weight: bold; transition: all 0.2s; }
+        .gender-btn.selected { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 10px rgba(44, 62, 80, 0.3); }
+        .points-counter { text-align: center; font-weight: bold; margin-bottom: 20px; font-size: 1.1rem; }
+
+        .stat-row { margin-bottom: 18px; display: flex; align-items: center; gap: 12px; background: #f8f9fa; padding: 10px; border-radius: 12px; }
+        .stat-label { width: 60px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        input[type="range"] { flex: 1; accent-color: var(--primary); cursor: pointer; height: 6px; }
+        .stat-val { font-weight: bold; color: var(--primary); width: 30px; text-align: right;}
+
+        /* 游戏主界面 Game Screen */
+        #log-container { flex: 1; overflow-y: auto; padding-bottom: 80px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+        .log-item {
+            padding: 12px 5px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            opacity: 0;
+            animation: slideUp 0.4s ease-out forwards;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .age-tag {
+            display: inline-block; background: var(--primary); color: white; padding: 3px 8px; border-radius: 6px;
+            font-size: 0.75rem; margin-right: 10px; min-width: 32px; text-align: center; font-weight: bold;
+        }
+
+        /* --- 文字特效 --- */
+        .highlight { color: #c0392b; font-weight: bold; background: var(--highlight-bg); padding: 2px 6px; border-radius: 4px; }
+        .golden { color: #dda928; font-weight: 900; text-shadow: 1px 1px 0 rgba(0,0,0,0.1); font-size: 1.05rem; background: linear-gradient(to right, rgba(255,255,255,0), rgba(241, 196, 15, 0.15), rgba(255,255,255,0)); }
+        
+        /* 世界线专属字体风格 */
+        .xiuxian-text { color: #00796b; font-family: "KaiTi", "STKaiti", serif; font-weight: bold; font-size: 1.02rem; }
+        .anime-text { color: #d81b60; font-style: italic; }
+        .horror-text { color: #b0bec5; font-family: "Courier New", monospace; letter-spacing: -0.5px; }
+        .horror-text strong { color: #ff3d00; text-shadow: 0 0 5px #ff3d00; } /* 恐怖重点 */
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header" id="header-bar">
+        <span class="penguin-icon">🐧</span>
+        <span id="title-text">高雅人生模拟器</span>
+        <span class="penguin-icon">🍷</span>
+    </div>
+
+    <div id="screen-start" class="screen active start-screen">
+        <div class="meme-banner">🕴️🎲🦑</div>
+        <h1>人生重开 v3.0</h1>
+        <p class="subtitle">“做人太累了，不如做个高雅的企鹅。”</p>
+        
+        <div class="version-info">
+            <strong>本周目特色：</strong><br>
+            • 可转生为非人类物种（企鹅、蟑螂等）<br>
+            • 引入随机暴毙系统，生命无常<br>
+            • <span class="special-hint">警告：运行中有概率发生世界线变动，进入（修仙、二次元、诡异……）等特殊位面。</span>
+        </div>
+        
+        <button class="btn" onclick="goToSetup()">开始抽卡</button>
+    </div>
+
+    <div id="screen-setup" class="screen setup-screen">
+        <h2>定制你的天赋 (20点)</h2>
+        <div class="gender-select">
+            <button class="gender-btn selected" onclick="selectGender('male', this)">男</button>
+            <button class="gender-btn" onclick="selectGender('female', this)">女</button>
+            <button class="gender-btn" onclick="selectGender('other', this)" title="可能会变成奇怪的东西">???</button>
+        </div>
+        
+        <div class="points-counter" style="color:var(--accent)">
+            剩余点数: <span id="points-display">20</span>
+        </div>
+
+        <div id="sliders-container">
+            </div>
+
+        <button class="btn" onclick="startGame()">开启随机人生</button>
+    </div>
+
+    <div id="screen-game" class="screen game-screen">
+        <div id="log-container">
+            </div>
+        <button id="restart-btn" class="btn" onclick="resetGame()">再次重开</button>
+    </div>
+</div>
+
+<script>
+    // ================= 配置区 =================
+    const TOTAL_POINTS = 20;
+    const statConfig = [
+        { key: 'face', name: '颜值', icon: '💅' },
+        { key: 'iq', name: '智商', icon: '🧠' },
+        { key: 'body', name: '体质', icon: '💪' },
+        { key: 'money', name: '家境', icon: '💰' },
+        { key: 'luck', name: '气运', icon: '🍀' }
+    ];
+    
+    // 物种列表 (v1.0特性)
+    const speciesList = ['高雅企鹅', '水豚', '赛博蟑螂', '一棵树', '史莱姆', '不可名状之物'];
+
+    // ================= 状态区 =================
+    let remainingPoints = TOTAL_POINTS;
+    let stats = { face:0, iq:0, body:0, money:0, luck:0 };
+    let selectedGenderTag = 'male'; // 用于UI选择
+    let finalGenderOrSpecies = '人类男性'; // 实际游戏中的身份
+    let age = 0;
+    let isDead = false;
+    let gameInterval = null;
+    let currentMode = 'normal'; // normal, xiuxian, 2d, horror
+    let lastEventHash = ""; // 防重复
+
+    // ================= 事件库 (V2.0 & V1.0 融合) =================
+    
+    // 通用人类事件
+    const humanEvents = [
+        "你沉迷于网络上的高雅艺术鉴赏视频，虽然你看不懂。",
+        "走路时为了躲避一只蚂蚁，你摔了个狗吃屎，但姿势很优雅。",
+        "你试图学做饭，结果炸了厨房，黑着脸走出来时像个挖煤的。",
+        "你在网上发表了一篇关于'如何优雅地吃泡面'的帖子，获得了10万+点赞。",
+        "因为在课堂上睡觉流口水，被拍下来做成了全校流传的表情包。",
+        "你爱上了喝咖啡，虽然每次都偷偷加五块方糖。",
+        "平淡的一年，你最大的成就是教会了家里的狗握手。"
+    ];
+
+    // v1.0 特色：物种专属事件
+    const speciesEvents = {
+        '高雅企鹅': [
+            "你穿上了燕尾服，混入了人类的高级晚宴，没人发现异常。",
+            "你在腾讯总部大楼前徘徊，试图认亲。",
+            "你优雅地吃了一只磷虾，并评价道：'佐餐酒年份不对'。",
+            "你被做成了表情包，在互联网上疯传，标题是《打工人的真实写照》。",
+            "由于全球变暖，你不得不搬家，这很不体面。"
+        ],
+        '赛博蟑螂': [
+            "你在核废墟中醒来，感觉浑身充满了机械力量。",
+            "你试图啃食电线来补充能量，被电得酥麻。",
+            "因为外壳太硬，你卡在了下水道口整整一年。",
+            "你进化出了光学迷彩，开始观察人类的愚蠢行为。",
+            "被更高阶的扫地机器人追杀了一整条街。"
+        ],
+        '一棵树': [
+            "光合作用中... 感觉灵魂得到了升华。",
+            "一只狗在你脚下撒了尿，你很愤怒但无法移动，只能狂怒地掉两片叶子。",
+            "有人在你身上刻了'阿强爱阿珍'，俗不可耐，你感到受到了侮辱。",
+            "台风来了，你的发型（树冠）乱了。",
+            "一群鸟在你头上安了家，每天叽叽喳喳吵得你睡不着。"
+        ]
+    };
+
+    // v2.0 特色：世界线事件
+    const xiuxianEvents = [
+        { t: "你感觉到空气中有一种奇怪的波动，无师自通了【引气入体】！" },
+        { t: "你在地摊上买的古籍《广播体操大全》里夹着一张金页《九转金身决》。" },
+        { t: "闭关修炼中... 境界松动，周围的蚊子都被你的气势震死了。" },
+        { t: "试图突破筑基期，天降雷劫！你举起避雷针硬抗了下来。" },
+        { t: "你御剑飞行送外卖，从未超时，获得了'秋名山剑神'的称号。" }
+    ];
+
+    const animeEvents = [
+        { t: "一辆卡车冲你撞来！你心想：'业绩来了！' 结果卡车在你面前急刹车，司机把你骂了一顿。" },
+        { t: "早上醒来，发现床边坐着一个金发双马尾少女，指着你说：'庶民，给我做早饭！'" },
+        { t: "走在路上，突然天降美少女/美少年，正好砸在你怀里。物理学不存在了。" },
+        { t: "学校里转来一个神秘转校生，坐在后排靠窗的位置（王的故乡）。" }
+    ];
+
+    const horrorEvents = [
+        { t: "今晚的月亮是红色的。你听到窗外有人在用指甲挠玻璃，声音越来越急促。" },
+        { t: "照镜子时，你眨了眼，但镜子里的你没有眨眼，它在冷冷地看着你。" },
+        { t: "走夜路回家，总感觉身后有脚步声，回头却什么都没有，再转头，一张脸贴在你鼻尖上。" },
+        { t: "半夜醒来，发现天花板上全是密密麻麻的眼睛在盯着你。" },
+        { t: "收到了来自你死去多年的爷爷的短信：'快跑，别回头'。" }
+    ];
+
+
+    // ================= 逻辑控制区 =================
+
+    // --- 初始化与设置 ---
+    function initSetup() {
+        const container = document.getElementById('sliders-container');
+        container.innerHTML = '';
+        statConfig.forEach(stat => {
+            container.innerHTML += `
+                <div class="stat-row">
+                    <label class="stat-label">${stat.icon} ${stat.name}</label>
+                    <input type="range" min="0" max="10" value="0" data-key="${stat.key}" oninput="handleInput('${stat.key}', this.value)">
+                    <span class="stat-val" id="val-${stat.key}">0</span>
+                </div>`;
+        });
+        resetStatsUI();
+    }
+
+    function resetStatsUI() {
+        remainingPoints = TOTAL_POINTS;
+        for(let k in stats) stats[k] = 0;
+        document.querySelectorAll('input[type="range"]').forEach(el => el.value = 0);
+        document.querySelectorAll('.stat-val').forEach(el => el.innerText = '0');
+        updatePointDisplay();
+    }
+
+    function handleInput(key, val) {
+        val = parseInt(val);
+        let used = 0;
+        document.querySelectorAll('input[type="range"]').forEach(input => {
+            if(input.dataset.key !== key) used += parseInt(input.value);
+        });
+        
+        if (used + val > TOTAL_POINTS) {
+            val = TOTAL_POINTS - used;
+            document.querySelector(`input[data-key="${key}"]`).value = val;
+        }
+        
+        stats[key] = val;
+        document.getElementById(`val-${key}`).innerText = val;
+        remainingPoints = TOTAL_POINTS - (used + val);
+        updatePointDisplay();
+    }
+
+    function updatePointDisplay() {
+        const pDisplay = document.getElementById('points-display');
+        pDisplay.innerText = remainingPoints;
+        pDisplay.style.color = remainingPoints === 0 ? '#27ae60' : '#d35400';
+    }
+
+    function selectGender(tag, btn) {
+        selectedGenderTag = tag;
+        document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+    }
+
+    function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function goToSetup() { switchScreen('screen-setup'); }
+
+    // --- 游戏核心循环 ---
+
+    function startGame() {
+        if (remainingPoints > 0) { alert("属性点没分完！做人（或做企鹅）要全力以赴！"); return; }
+        
+        switchScreen('screen-game');
+        
+        // 重置状态
+        age = -1; isDead = false; currentMode = 'normal';
+        document.body.className = ''; // 重置背景
+        document.getElementById('log-container').innerHTML = '';
+        document.getElementById('restart-btn').style.display = 'none';
+        document.getElementById('title-text').innerText = "高雅人生模拟器";
+
+        // 确定最终身份 (v1.0 核心逻辑)
+        if (selectedGenderTag === 'other') {
+            finalGenderOrSpecies = speciesList[Math.floor(Math.random() * speciesList.length)];
+        } else {
+            finalGenderOrSpecies = selectedGenderTag === 'male' ? '人类男性' : '人类女性';
+        }
+
+        addLog(`<strong>系统加载成功。</strong> 转生身份:【${finalGenderOrSpecies}】 | 颜值:${stats.face} 智商:${stats.iq} 家境:${stats.money} 气运:${stats.luck}`, false, false);
+        
+        // 0.5秒一跳 (v1.0特性)
+        gameInterval = setInterval(gameLoop, 500);
+    }
+
+    function gameLoop() {
+        age++;
+        const logBox = document.getElementById('log-container');
+        
+        // 1. 随机暴毙检测 (v2.0特性)
+        if (checkSuddenDeath()) return;
+
+        // 2. 正常死亡上限
+        let maxAge = finalGenderOrSpecies.includes('人类') ? 100 : (finalGenderOrSpecies === '一棵树' ? 500 : 30);
+        if (age > maxAge && Math.random() < 0.3) {
+            die(`寿终正寝。作为【${finalGenderOrSpecies}】活到了${age}岁，也是个奇迹了。`);
+            return;
+        }
+
+        // 3. 事件生成核心
+        generateEvent();
+        
+        // UI更新
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // v2.0 核心: 随机暴毙系统
+    function checkSuddenDeath() {
+        if (age <= 0) return false;
+        let deathChance = 0.002; // 基础死亡率 0.2%
+        
+        // 属性影响
+        if (stats.body < 4) deathChance += (4 - stats.body) * 0.005;
+        if (stats.luck < 3) deathChance += 0.008;
+
+        // 模式影响
+        if (currentMode === 'horror') deathChance += 0.08; // 恐怖模式极易死亡
+        if (currentMode === 'xiuxian') deathChance += 0.02; // 修仙容易炸
+
+        // 物种影响
+        if (!finalGenderOrSpecies.includes('人类') && finalGenderOrSpecies !== '一棵树') {
+             deathChance += 0.03; // 非人类（除了树）更容易死
+        }
+
+        if (Math.random() < deathChance) {
+            let reason = "喝水呛死了。";
+            if (currentMode === 'xiuxian') reason = "急于求成，灵力逆流，当场自爆！";
+            if (currentMode === 'horror') reason = "虽然不知道发生了什么，但你突然消失了，地上只剩下一滩水。";
+            if (currentMode === '2d') reason = "被病娇捅了99刀。";
+            if (!finalGenderOrSpecies.includes('人类')) {
+                 reason = finalGenderOrSpecies === '高雅企鹅' ? "被海豹当成自助餐吃了。" : "被人类一脚踩扁了。";
+            }
+            
+            die(`【突发恶讯】${reason}`);
+            return true;
+        }
+        return false;
+    }
+
+    function die(msg) {
+        clearInterval(gameInterval);
+        isDead = true;
+        addLog(msg, true);
+        const endBtn = document.getElementById('restart-btn');
+        endBtn.style.display = 'block';
+        // endBtn.innerHTML = `享年 ${age} 岁 - 再次重开`;
+    }
+
+    // v2.0 & v1.0 融合: 事件生成
+    function generateEvent() {
+        let text = "";
+        let styleClass = "";
+        let isHighlight = false;
+        let isGolden = false;
+
+        // A. 尝试触发特殊世界线 (仅在正常模式且人类状态下触发)
+        if (currentMode === 'normal' && finalGenderOrSpecies.includes('人类') && age > 5 && Math.random() < 0.08) {
+            const roll = Math.random();
+            if (roll < 0.33 && (stats.iq > 6 || stats.body > 6)) {
+                switchMode('xiuxian');
+                return addLog("【机缘】你在地摊上买到了一本发光的书，世界在你眼中变了模样！进入修仙线！", false, true);
+            } else if (roll < 0.66 && (stats.face > 7 || stats.luck > 7 || stats.luck < 3)) {
+                switchMode('2d');
+                return addLog("【异变】画风突变！周围的人眼睛突然变得占了脸的一半大。进入二次元线！", false, true);
+            } else if (roll > 0.8 || stats.luck < 4) {
+                switchMode('horror');
+                return addLog("【警告】天色突然暗了下来，周围变得死一般寂静。诡异降临！", true, true);
+            }
+        }
+
+        // B. 根据当前模式和物种生成内容
+        if (currentMode === 'xiuxian') {
+            text = getRandom(xiuxianEvents).t; styleClass = "xiuxian-text";
+        } else if (currentMode === '2d') {
+            text = getRandom(animeEvents).t; styleClass = "anime-text";
+        } else if (currentMode === 'horror') {
+            text = getRandom(horrorEvents).t; styleClass = "horror-text";
+        } else {
+            // Normal Mode Logic
+            if (age === 0) {
+                text = getBirthText();
+            } else if (!finalGenderOrSpecies.includes('人类')) {
+                // v1.0 特性：非人类专属事件库
+                let pool = speciesEvents[finalGenderOrSpecies] || speciesEvents['赛博蟑螂']; // fallback
+                text = getRandom(pool);
+            } else {
+                // 人类通用事件
+                if (age === 18) text = "18岁，你成年了，感叹时光飞逝，决定做个高雅的人。";
+                else if (Math.random() < 0.4) text = getStatEvent(); // 基于属性的事件
+                else text = getRandom(humanEvents);
+            }
+        }
+
+        // 防重复
+        if (text === lastEventHash) {
+            text = "这一年平平淡淡，你在这个喧嚣的世界里保持了内心的宁静。";
+            styleClass = "";
+        }
+        lastEventHash = text;
+
+        // 关键词高亮判断
+        if (text.includes("死") || text.includes("杀") || text.includes("警告")) isHighlight = true;
+        if (text.includes("神") || text.includes("机缘") || text.includes("高雅") || text.includes("富")) isGolden = true;
+
+        addLog(text, isHighlight, isGolden, styleClass);
+    }
+
+    function switchMode(mode) {
+        currentMode = mode;
+        document.body.className = `mode-${mode}`;
+        const titles = { 'xiuxian': '修仙模拟器 (炼气期)', '2d': '恋爱养成模拟器', 'horror': '规则怪谈模拟器' };
+        document.getElementById('title-text').innerText = titles[mode] || '高雅人生模拟器';
+    }
+
+    // --- 辅助文案函数 ---
+    function getRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+    function getBirthText() {
+        if (!finalGenderOrSpecies.includes('人类')) return `你转生成为了【${finalGenderOrSpecies}】，感觉怪怪的。`;
+        if (stats.money > 8) return "含着钻石汤匙出生，你爸送了你一座酒庄当满月礼。";
+        if (stats.luck < 2) return "出生那天医院停电，差点把你抱错了，开局不利。";
+        if (stats.iq > 8) return "出生时没哭，反而淡定地观察了一下护士的工牌，震惊全院。";
+        return "你出生了，是个普普通通的婴儿，哭声嘹亮。";
+    }
+
+    function getStatEvent() {
+        if (stats.money > 8 && Math.random()>0.5) return "富二代的生活枯燥且乏味，你买了一艘游艇发呆。";
+        if (stats.face > 8 && Math.random()>0.5) return "走在街上被一群星探围追堵截，你只能戴口罩出门。";
+        if (stats.iq < 3 && Math.random()>0.5) return "你试图跟Siri吵架，结果吵输了，气得一整天没吃饭。";
+        if (stats.body > 8) return "你参加了马拉松，拿了冠军，还顺便帮终点线的工作人员搬了桌子。";
+        return "基于你当前的属性，这一年过得不好不坏。";
+    }
+
+    function addLog(text, isHighlight, isGolden, customClass) {
+        const div = document.createElement('div');
+        div.className = 'log-item';
+        let content = `<span class="age-tag">${age}岁</span> ${text}`;
+        if (age === -1) content = `<span class="age-tag" style="background:#95a5a6">前世</span> ${text}`;
+        div.innerHTML = content;
+        if (isHighlight) div.classList.add('highlight');
+        if (isGolden) div.classList.add('golden');
+        if (customClass) div.classList.add(customClass);
+        document.getElementById('log-container').appendChild(div);
+    }
+
+    function resetGame() {
+        switchScreen('screen-start');
+        document.body.className = '';
+        initSetup();
+    }
+    
+    // 启动初始化
+    initSetup();
+</script>
+
+</body>
+</html>
